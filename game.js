@@ -18,6 +18,9 @@ var drawShape = 0;
 var brightness = 0;
 var farthest = {};
 var nearest = {};
+var hovered = -1;
+var hoverExpand = 0;
+var painting;
 var imageData;
 var drawingData;
 
@@ -42,6 +45,7 @@ for (var i in defects) {
 var paintings = [{'name': 'American Gothic', 'artist': 'Grant Wood', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Arnolfini Portrait', 'artist': 'Jan van Eyck', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Burning Skull Portrait', 'artist': 'Minecraft', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
+	{'name': 'Composition II', 'artist': 'Piet Mondrian', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Las Meninas', 'artist': 'Diego Velázquez', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Liberty Leading the People', 'artist': 'Eugène Delacroix', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Girl with a Pearl Earring', 'artist': 'Johannes Vermeer', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
@@ -62,14 +66,13 @@ var paintings = [{'name': 'American Gothic', 'artist': 'Grant Wood', 'defect': '
 	{'name': 'The Persistance of Memory', 'artist': 'Salvador Dalí', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'The Raft of the Medusa', 'artist': 'Théodore Géricault', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'The School of Athens', 'artist': 'Raphael', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
+	{'name': 'The Scream', 'artist': 'Edvard Munch', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'The Son of Man', 'artist': 'René Magritte', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'The Swing', 'artist': 'Jean-Honoré Fragonard', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'The Third of May', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Wanderer Above the Sea of Fog', 'artist': 'Caspar David Friedrich', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Washington Crossing the Delaware', 'artist': 'Emanuel Leutze', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Witches\' Sabbath', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Composition II', 'artist': 'Piet Mondrian', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Scream', 'artist': 'Edvard Munch', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5}];
+	{'name': 'Witches\' Sabbath', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5}];
 
 for (var i in paintings) {
 	var img = new Image();
@@ -80,8 +83,6 @@ for (var i in paintings) {
 function getRandomPainting() {
 	return paintings[Math.floor(Math.random()*paintings.length)];
 }
-
-var painting = getRandomPainting();
 
 function getIndex(data, x, y) {
 	return index = ((y*data.width) + x)*4;
@@ -171,6 +172,24 @@ function render() {
 	context.fillRect(0, 0, canvas.width, canvas.height);
 
 	if (gallery) {
+		var marginX = canvas.width/6;
+		var imgWidth = canvas.width/19;
+		var imgHeight = canvas.height/9;
+		var gapX = imgWidth/10;
+		var gapY = imgHeight/10;
+		var maxColumns = Math.floor((canvas.width-(2*marginX))/(imgWidth + gapX));
+
+		context.fillStyle = 'rgba(20, 20, 20, 1)';
+		context.fillRect(marginX - imgWidth/2 - gapX, canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - gapY, maxColumns*(imgWidth + gapX) + gapX, (imgHeight + gapY)*Math.ceil(Object.keys(paintings).length/maxColumns) + gapY);
+
+		var index = 0;
+		for (var i in paintings) {
+			var temp = paintings[i].img;
+
+			context.drawImage(temp, temp.width/2 - 2*imgWidth, temp.height/2.5 - 2*imgHeight, imgWidth*4, imgHeight*4, (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 - ((hovered == index) ? hoverExpand*gapX : 0), (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - ((hovered == index) ? hoverExpand*gapY : 0), imgWidth + ((hovered == index) ? 2*hoverExpand*gapX : 0), imgHeight + ((hovered == index) ? 2*hoverExpand*gapY : 0));
+			index++;
+		}
+
 		context.drawImage(repairIcon, 0, 0);
 	} else {
 		colorWheelX = canvas.width/19;
@@ -284,46 +303,60 @@ setInterval(function() {
 	context = canvas.getContext('2d');
 	context.imageSmoothingEnabled = false;
 
-	if (showDefect) {
-		defectFrame += 10.65;
-	}
+	if (gallery) {
+		if (hovered == -1) {
+			hoverExpand = 0;
+		} else {
+			hoverExpand = Math.min(hoverExpand + 0.15, 1);
+		}
 
-	render();
+		render();
+	} else {
+		if (!painting) {
+			painting = getRandomPainting();
+		}
 
-	switch(swingStage) {
-		case 0:
-			velocity += 0.35;
-			if(angle >= 4) {
-				velocity = -1;
+		if (showDefect) {
+			defectFrame += 10.65;
+		}
+
+		render();
+
+		switch(swingStage) {
+			case 0:
+				velocity += 0.35;
+				if(angle >= 4) {
+					velocity = -1;
+					swingStage++;
+				}
+				break;
+			case 1:
+				if(Math.abs(angle) <= 2) {
+					velocity = 0;
+					angle = 0;
+					showDefect = true;
+					swingStage++;
+				}
+				break;
+			case 2:
+				imageData = context.getImageData(0, 0, 1, 1);
 				swingStage++;
-			}
-			break;
-		case 1:
-			if(Math.abs(angle) <= 2) {
-				velocity = 0;
-				angle = 0;
-				showDefect = true;
+				break;
+			case 3:
+				imageData = context.getImageData((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2, defects[painting.defect].hole_img.width, defects[painting.defect].hole_img.height);
 				swingStage++;
-			}
-			break;
-		case 2:
-			imageData = context.getImageData(0, 0, 1, 1);
-			swingStage++;
-			break;
-		case 3:
-			imageData = context.getImageData((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2, defects[painting.defect].hole_img.width, defects[painting.defect].hole_img.height);
-			swingStage++;
-			break;
-	}
+				break;
+		}
 
-	if (!drawingData && defectFrame > 0 && 1 - (-defectFrame + 100)/50 >= 1) {
-		drawable = true;
-		drawingData = context.getImageData((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2, defects[painting.defect].hole_img.width, defects[painting.defect].hole_img.height);
-		showDefect = false;
-		defectFrame = -40;
-	}
+		if (!drawingData && defectFrame > 0 && 1 - (-defectFrame + 100)/50 >= 1) {
+			drawable = true;
+			drawingData = context.getImageData((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2, defects[painting.defect].hole_img.width, defects[painting.defect].hole_img.height);
+			showDefect = false;
+			defectFrame = -40;
+		}
 
-	angle += velocity;
+		angle += velocity;
+	}
 }, 1000/ticks);
 
 document.addEventListener('mouseup', function(event) {
@@ -340,8 +373,8 @@ document.addEventListener('mousedown', function(event) {
 	changingBrushSize = false;
 
 	if (gallery) {
-		if (event.clientX >= 0 && event.clientX <= repairIcon.width && event.clientY >= 0 && event.clientY <= galleryIcon.height) {
-			gallery = true;
+		if (event.clientX >= 0 && event.clientX <= repairIcon.width && event.clientY >= 0 && event.clientY <= repairIcon.height) {
+			gallery = false;
 		}
 	} else {
 		var wheelDist = getDistance(event.clientX, event.clientY, colorWheelX + colorWheel.width/2, colorWheelY + colorWheel.height/2);
@@ -378,15 +411,53 @@ document.addEventListener('mousedown', function(event) {
 
 		if (event.clientX >= canvas.width - galleryIcon.width && event.clientX <= canvas.width && event.clientY >= 0 && event.clientY <= galleryIcon.height) {
 			gallery = true;
+
+			angle = -180;
+			velocity = 0;
+			swingStage = 0;
+			defectFrame = -40;
+			showDefect = false;
+			drawable = false;
+			drawing = false;
+			farthest = {};
+			nearest = {};
+			imageData = null;
+			drawingData = null;
+			painting = null;
 		}
 
-		lastX = event.clientX - Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
-		lastY = event.clientY - Math.round((canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+		if (painting) {
+			lastX = event.clientX - Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
+			lastY = event.clientY - Math.round((canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+		}
 	}
 });
 
 document.addEventListener('mousemove', function(event) {
 	if (gallery) {
+		var marginX = canvas.width/6;
+		var imgWidth = canvas.width/19;
+		var imgHeight = canvas.height/9;
+		var gapX = imgWidth/10;
+		var gapY = imgHeight/10;
+		var maxColumns = Math.floor((canvas.width-(2*marginX))/(imgWidth + gapX));
+
+		var lastHover = hovered;
+		hovered = -1;
+		var index = 0;
+		for (var i in paintings) {
+			var temp = paintings[i].img;
+
+			if (event.clientX >= (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 && event.clientX <= (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 + imgWidth && event.clientY >= (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 && event.clientY <= (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 + imgHeight) {
+				hovered = index;
+
+				if (lastHover != hovered) {
+					hoverExpand = 0;
+				}
+				break;
+			}
+			index++;
+		}
 
 	} else {
 		if (drawable && drawing && event.clientX >= (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2 && event.clientX <= (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2 + defects[painting.defect].hole_img.width && event.clientY >= (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2 && event.clientY <= (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2 + defects[painting.defect].hole_img.height) {
@@ -420,8 +491,10 @@ document.addEventListener('mousemove', function(event) {
 			brushSize = Math.round(Math.min(Math.max((maxBrushSize-1)*((event.clientX - canvas.width/15)/(canvas.width/10)) + 1, 1), maxBrushSize));
 		}
 
-		lastX = event.clientX - Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
-		lastY = event.clientY - Math.round((canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+		if (painting) {
+			lastX = event.clientX - Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
+			lastY = event.clientY - Math.round((canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+		}
 	}
 });
 
@@ -462,6 +535,7 @@ socket.on('showArt', function(art) {
 		}
 	}
 
+	console.log(receiveData);
 	drawingData.data.set(Uint8ClampedArray.from(receiveData));
 });
 

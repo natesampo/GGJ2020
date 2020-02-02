@@ -26,7 +26,7 @@ server.listen(process.env.PORT || port, function() {
 	}
 });
 
-var access_token = '2MMTqs9tilAAAAAAAAAASgmsufi0hoSY4rsfzZ8pGz7O9V9g_0XUYpDiiIPEIVon'
+var access_token = '2MMTqs9tilAAAAAAAAAATI2Z_k9jW7qtzjRVhUuTOSy_E-9XYdmIv223Icj33TQ';
 
 io.on('connection', function(socket) {
 	console.log('New Connection');
@@ -67,9 +67,20 @@ io.on('connection', function(socket) {
 				}
 			};
 
+			/*options = {
+				method: "GET",
+				url: 'https://api.dropboxapi.com/2/files/list_folder',
+				headers: {
+					"Content-Type": "application/octet-stream",
+					"Authorization": "Bearer " + access_token,
+					"Dropbox-API-Arg": "{\"path\": \"/paintings/"+painting_name+"\", \"recursive\": false, \"include_media_info\": false, \"include_deleted\": false, \"include_has_explicit_shared_members\": false, \"include_mounted_folders\": false, \"include_non_downloadable_files\": false}",
+				}
+			};*/
+
 			request(options, function(err, res, body) {
 				console.log("Err : " + err);
 				console.log("res : " + res);
+				console.log("body : " + body);
 				io.to(socket.id).emit('showArt', body);
 			});
 		} catch (e) {
