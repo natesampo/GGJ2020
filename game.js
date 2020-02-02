@@ -172,22 +172,42 @@ function render() {
 	context.fillRect(0, 0, canvas.width, canvas.height);
 
 	if (gallery) {
-		var marginX = canvas.width/6;
-		var imgWidth = canvas.width/19;
-		var imgHeight = canvas.height/9;
-		var gapX = imgWidth/10;
-		var gapY = imgHeight/10;
-		var maxColumns = Math.floor((canvas.width-(2*marginX))/(imgWidth + gapX));
+		if (!painting) {
+			var marginX = canvas.width/6;
+			var imgWidth = canvas.width/19;
+			var imgHeight = canvas.height/9;
+			var gapX = imgWidth/10;
+			var gapY = imgHeight/10;
+			var maxColumns = Math.floor((canvas.width-(2*marginX))/(imgWidth + gapX));
 
-		context.fillStyle = 'rgba(20, 20, 20, 1)';
-		context.fillRect(marginX - imgWidth/2 - gapX, canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - gapY, maxColumns*(imgWidth + gapX) + gapX, (imgHeight + gapY)*Math.ceil(Object.keys(paintings).length/maxColumns) + gapY);
+			context.fillStyle = 'rgba(20, 20, 20, 1)';
+			context.fillRect(marginX - imgWidth/2 - gapX, canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - gapY, maxColumns*(imgWidth + gapX) + gapX, (imgHeight + gapY)*Math.ceil(Object.keys(paintings).length/maxColumns) + gapY);
 
-		var index = 0;
-		for (var i in paintings) {
-			var temp = paintings[i].img;
+			var index = 0;
+			for (var i in paintings) {
+				var temp = paintings[i].img;
 
-			context.drawImage(temp, temp.width/2 - 2*imgWidth, temp.height/2.5 - 2*imgHeight, imgWidth*4, imgHeight*4, (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 - ((hovered == index) ? hoverExpand*gapX : 0), (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - ((hovered == index) ? hoverExpand*gapY : 0), imgWidth + ((hovered == index) ? 2*hoverExpand*gapX : 0), imgHeight + ((hovered == index) ? 2*hoverExpand*gapY : 0));
-			index++;
+				context.drawImage(temp, temp.width/2 - 2*imgWidth, temp.height/2.5 - 2*imgHeight, imgWidth*4, imgHeight*4, (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 - ((hovered == index) ? hoverExpand*gapX : 0), (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - ((hovered == index) ? hoverExpand*gapY : 0), imgWidth + ((hovered == index) ? 2*hoverExpand*gapX : 0), imgHeight + ((hovered == index) ? 2*hoverExpand*gapY : 0));
+				index++;
+			}
+		} else {
+			context.lineWidth = 6;
+			var marginX = canvas.width/150;
+			var size = Math.min(Math.min((canvas.height - repairIcon.height)/painting.img.height, 1), Math.min((canvas.width/2 - 2*context.lineWidth - 2*marginX)/painting.img.width, 1));
+
+			context.drawImage(painting.img, marginX, (canvas.height - repairIcon.height)/2 - size*painting.img.height/2 + repairIcon.height, size*painting.img.width, size*painting.img.height);
+
+			context.strokeStyle = 'rgba(10, 10, 10, 1)';
+			context.beginPath();
+			context.rect(marginX, (canvas.height - repairIcon.height)/2 - size*painting.img.height/2 + repairIcon.height, size*painting.img.width, size*painting.img.height);
+			context.stroke();
+			context.closePath();
+
+			context.fillStyle = 'rgba(20, 20, 20, 1)';
+			context.fillRect(canvas.width/2, 0, canvas.width/2, canvas.height);
+
+			context.fillStyle = 'rgba(10, 10, 10, 1)';
+			context.fillRect(canvas.width/2 - 4, 0, 8, canvas.height);
 		}
 
 		context.drawImage(repairIcon, 0, 0);
@@ -375,6 +395,23 @@ document.addEventListener('mousedown', function(event) {
 	if (gallery) {
 		if (event.clientX >= 0 && event.clientX <= repairIcon.width && event.clientY >= 0 && event.clientY <= repairIcon.height) {
 			gallery = false;
+
+			angle = -180;
+			velocity = 0;
+			swingStage = 0;
+			defectFrame = -40;
+			showDefect = false;
+			drawable = false;
+			drawing = false;
+			farthest = {};
+			nearest = {};
+			imageData = null;
+			drawingData = null;
+			painting = null;
+		}
+
+		if (hovered != -1) {
+			painting = paintings[hovered];
 		}
 	} else {
 		var wheelDist = getDistance(event.clientX, event.clientY, colorWheelX + colorWheel.width/2, colorWheelY + colorWheel.height/2);
@@ -519,7 +556,7 @@ document.addEventListener('keyup', function(event) {
 				break;
 			case 16: // Shift
 				//socket.emit('saveArt', painting.name, sendData);
-				socket.emit('getArt', 'Mona Lisa');
+				socket.emit('getArt', painting.name);
 				break;
 		}
 	}

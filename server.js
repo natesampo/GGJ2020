@@ -11,7 +11,10 @@ var app = express();
 var server = http.Server(app);
 var io = socketIO(server);
 
+var ticks = 10;
 var port = 5000;
+
+var fileList = [];
 
 app.use('/', express.static(__dirname + '/'));
 
@@ -26,65 +29,85 @@ server.listen(process.env.PORT || port, function() {
 	}
 });
 
-var access_token = '2MMTqs9tilAAAAAAAAAATI2Z_k9jW7qtzjRVhUuTOSy_E-9XYdmIv223Icj33TQ';
+var accessToken = '2MMTqs9tilAAAAAAAAAATI2Z_k9jW7qtzjRVhUuTOSy_E-9XYdmIv223Icj33TQ';
 
 io.on('connection', function(socket) {
 	console.log('New Connection');
-	socket.on('saveArt', function(painting_name, art) {
+	socket.on('saveArt', function(paintingName, art) {
 		try {
 			//var content = Buffer.from(art);
 			//console.log([...content]);
 
-			options = {
+			var options = {
 				method: "POST",
 				url: 'https://content.dropboxapi.com/2/files/upload',
 				headers: {
 					"Content-Type": "application/octet-stream",
-					"Authorization": "Bearer " + access_token,
-					"Dropbox-API-Arg": "{\"path\": \"/paintings/"+painting_name+"/"+Date.now()+"\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}",
+					"Authorization": "Bearer " + accessToken,
+					"Dropbox-API-Arg": "{\"path\": \"/paintings/"+paintingName+"/"+Date.now()+"\",\"mode\": \"overwrite\",\"autorename\": true,\"mute\": false}"
 				},
 				body:art
 			};
 
 			request(options, function(err, res, body) {
-				console.log("Err : " + err);
-				console.log("res : " + res);
-				console.log("body : " + body);
+				var jsonBody = JSON.parse(body);
+				if (jsonBody['path_display']) {
+					console.log('Saved Painting: ' + jsonBody.path_display);
+				}
 			});
 		} catch (e) {
 			console.log(e);
 		}
    	});
-   	socket.on('getArt', function(painting_name) {
+   	socket.on('getArt', function(paintingName) {
 		try {
-			options = {
-				method: "GET",
-				url: 'https://content.dropboxapi.com/2/files/download',
-				headers: {
-					"Content-Type": "application/octet-stream",
-					"Authorization": "Bearer " + access_token,
-					"Dropbox-API-Arg": "{\"path\": \"/paintings/"+painting_name+"/"+"1580632238404"+"\"}",
-				}
-			};
-
-			/*options = {
-				method: "GET",
+			var options = {
+				method: "POST",
 				url: 'https://api.dropboxapi.com/2/files/list_folder',
 				headers: {
-					"Content-Type": "application/octet-stream",
-					"Authorization": "Bearer " + access_token,
-					"Dropbox-API-Arg": "{\"path\": \"/paintings/"+painting_name+"\", \"recursive\": false, \"include_media_info\": false, \"include_deleted\": false, \"include_has_explicit_shared_members\": false, \"include_mounted_folders\": false, \"include_non_downloadable_files\": false}",
-				}
-			};*/
+					"Content-Type": "application/json",
+					"Authorization": "Bearer " + accessToken
+				},
+				body: "{\"path\": \"/paintings/"+paintingName+"\", \"recursive\": false, \"include_media_info\": false, \"include_deleted\": false, \"include_has_explicit_shared_members\": false, \"include_mounted_folders\": false, \"include_non_downloadable_files\": false}"
+			};
 
 			request(options, function(err, res, body) {
-				console.log("Err : " + err);
-				console.log("res : " + res);
-				console.log("body : " + body);
-				io.to(socket.id).emit('showArt', body);
+				var jsonBody = JSON.parse(body);
+
+				if (jsonBody['error_summary']) {
+					console.log('No Paintings Saved For ' + paintingName);
+				} else if (jsonBody['entries']) {
+					console.log('Found ' + jsonBody.entries.length + ' Paintings of ' + paintingName);
+				}
+
+				for (var i in jsonBody.entries) {
+					jsonBody.entries[i]['requesterID'] = socket.id;
+					fileList.push(jsonBody.entries[i]);
+				}
 			});
 		} catch (e) {
 			console.log(e);
 		}
    	});
 });
+
+setInterval(function() {
+	for (var i=fileList.length-1; i>=0; i--) {
+		let item = fileList.pop();
+
+		var options = {
+			method: "GET",
+			url: 'https://content.dropboxapi.com/2/files/download',
+			headers: {
+				"Content-Type": "application/octet-stream",
+				"Authorization": "Bearer " + accessToken,
+				"Dropbox-API-Arg": "{\"path\": \""+item.path_display+"\"}"
+			}
+		};
+
+		request(options, function(err, res, body) {
+			console.log('Retrieved ' + item.path_display);
+			io.to(item.requesterID).emit('showArt', body);
+		});
+	}
+}, 1000/ticks);
