@@ -59,7 +59,7 @@ io.on('connection', function(socket) {
 			console.log(e);
 		}
    	});
-   	socket.on('getArt', function(paintingName) {
+   	socket.on('getArt', function(paintingName, ids) {
 		try {
 			var options = {
 				method: "POST",
@@ -81,8 +81,19 @@ io.on('connection', function(socket) {
 				}
 
 				for (var i in jsonBody.entries) {
-					jsonBody.entries[i]['requesterID'] = socket.id;
-					fileList.push(jsonBody.entries[i]);
+					var found = false;
+					for (var j in ids) {
+						if (ids[j] == jsonBody.entries[i].name) {
+							found = true;
+							break;
+						}
+					}
+
+					if (!found) {
+						jsonBody.entries[i]['requesterID'] = socket.id;
+						jsonBody.entries[i]['paintingName'] = paintingName;
+						fileList.push(jsonBody.entries[i]);
+					}
 				}
 			});
 		} catch (e) {
@@ -107,7 +118,7 @@ setInterval(function() {
 
 		request(options, function(err, res, body) {
 			console.log('Retrieved ' + item.path_display);
-			io.to(item.requesterID).emit('showArt', body);
+			io.to(item.requesterID).emit('showArt', item.paintingName, item.name, body);
 		});
 	}
 }, 1000/ticks);

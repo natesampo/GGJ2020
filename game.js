@@ -20,6 +20,9 @@ var farthest = {};
 var nearest = {};
 var hovered = -1;
 var hoverExpand = 0;
+var cacheSelect = -1;
+var username = '';
+var cache = {};
 var painting;
 var imageData;
 var drawingData;
@@ -78,6 +81,8 @@ for (var i in paintings) {
 	var img = new Image();
 	img.src = 'artwork/' + paintings[i].name + '.jpg';
 	paintings[i]['img'] = img;
+
+	cache[paintings[i].name] = [];
 }
 
 function getRandomPainting() {
@@ -151,6 +156,9 @@ galleryIcon.src = 'gallery.png';
 var repairIcon = new Image();
 repairIcon.src = 'repair.png';
 
+var backIcon = new Image();
+backIcon.src = 'back.png';
+
 var canvas = document.getElementById('canvas');
 canvas.style.position = 'absolute';
 canvas.style.top = 0;
@@ -172,7 +180,82 @@ function render() {
 	context.fillRect(0, 0, canvas.width, canvas.height);
 
 	if (gallery) {
-		if (!painting) {
+		if (painting) {
+			context.lineWidth = 6;
+			var marginX = canvas.width/120;
+			var marginY = canvas.height/150;
+			var size = Math.min(Math.min((canvas.height - repairIcon.height - backIcon.height - 2*context.lineWidth - 2*marginY)/painting.img.height, 1), Math.min((canvas.width/2 - 2*context.lineWidth - 2*marginX)/painting.img.width, 1));
+
+			context.drawImage(painting.img, marginX, (canvas.height - repairIcon.height - backIcon.height)/2 - size*painting.img.height/2 + repairIcon.height, size*painting.img.width, size*painting.img.height);
+
+			context.strokeStyle = 'rgba(10, 10, 10, 1)';
+			context.beginPath();
+			context.rect(marginX, (canvas.height - repairIcon.height - backIcon.height)/2 - size*painting.img.height/2 + repairIcon.height, size*painting.img.width, size*painting.img.height);
+			context.stroke();
+			context.closePath();
+
+			context.fillStyle = 'rgba(25, 25, 25, 1)';
+			context.fillRect(2*marginX + size*painting.img.width, 0, canvas.width - 2*marginX + size*painting.img.width, canvas.height);
+
+			context.fillStyle = 'rgba(10, 10, 10, 1)';
+			context.fillRect(2*marginX + size*painting.img.width - 4, 0, 8, canvas.height);
+
+			var gapX = canvas.width/180;
+			var gapY = canvas.height/80;
+			marginY = canvas.height/50;
+			var thickness = canvas.height/7;
+			var imgMarginX = canvas.width/160;
+			var imgMarginY = canvas.height/180;
+			context.fillStyle = 'rgba(80, 80, 80, 1)';
+			context.lineWidth = 4;
+
+			var scale = (thickness - 2*context.lineWidth - 2*imgMarginY)/painting.img.height;
+
+			context.strokeStyle = ((cacheSelect==-1) ? 'rgba(240, 240, 240, 1)' : 'rgba(10, 10, 10, 1)');
+			context.beginPath();
+			context.rect(2*marginX + size*painting.img.width + 8 + gapX, marginY, canvas.width - (2*marginX + size*painting.img.width + 8 + gapX) - gapX, thickness);
+			context.fill();
+			context.stroke();
+			context.closePath();
+
+			context.drawImage(painting.img, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX, marginY + context.lineWidth + imgMarginY, scale*painting.img.width, scale*painting.img.height);
+			if (cacheSelect >= 0) {
+				var tempCanvas=document.createElement('canvas');
+				var tempContext=tempCanvas.getContext('2d');
+				tempCanvas.width = cache[painting.name][cacheSelect].data.width;
+				tempCanvas.height = cache[painting.name][cacheSelect].data.height;
+				tempContext.putImageData(cache[painting.name][cacheSelect].data, 0, 0);
+
+				var drawing = new Image();
+				drawing.src = tempCanvas.toDataURL();
+
+				context.drawImage(drawing, marginX + size*(painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2), (canvas.height - repairIcon.height - backIcon.height)/2 - size*painting.img.height/2 + repairIcon.height + size*(painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2) - 0.5, size*defects[painting.defect].hole_img.width, size*defects[painting.defect].hole_img.height);
+			}
+
+			for (var i in cache[painting.name]) {
+				context.strokeStyle = ((cacheSelect==i) ? 'rgba(240, 240, 240, 1)' : 'rgba(10, 10, 10, 1)');
+				context.beginPath();
+				context.rect(2*marginX + size*painting.img.width + 8 + gapX, (+i+1)*(thickness + gapY) + marginY, canvas.width - (2*marginX + size*painting.img.width + 8 + gapX) - gapX, thickness);
+				context.fill();
+				context.stroke();
+				context.closePath();
+
+				context.drawImage(painting.img, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX, (+i+1)*(thickness + gapY) + marginY + context.lineWidth + imgMarginY, scale*painting.img.width, scale*painting.img.height);
+
+				var tempCanvas = document.createElement('canvas');
+				var tempContext = tempCanvas.getContext('2d');
+				tempCanvas.width = cache[painting.name][i].data.width;
+				tempCanvas.height = cache[painting.name][i].data.height;
+				tempContext.putImageData(cache[painting.name][i].data, 0, 0);
+
+				var drawing = new Image();
+				drawing.src = tempCanvas.toDataURL();
+
+				context.drawImage(drawing, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX + scale*(painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2), (+i+1)*(thickness + gapY) + marginY + context.lineWidth + imgMarginY + scale*(painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2), scale*defects[painting.defect].hole_img.width, scale*defects[painting.defect].hole_img.height);
+			}
+
+			context.drawImage(backIcon, 0, canvas.height - backIcon.height);
+		} else {
 			var marginX = canvas.width/6;
 			var imgWidth = canvas.width/19;
 			var imgHeight = canvas.height/9;
@@ -190,24 +273,6 @@ function render() {
 				context.drawImage(temp, temp.width/2 - 2*imgWidth, temp.height/2.5 - 2*imgHeight, imgWidth*4, imgHeight*4, (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 - ((hovered == index) ? hoverExpand*gapX : 0), (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 - ((hovered == index) ? hoverExpand*gapY : 0), imgWidth + ((hovered == index) ? 2*hoverExpand*gapX : 0), imgHeight + ((hovered == index) ? 2*hoverExpand*gapY : 0));
 				index++;
 			}
-		} else {
-			context.lineWidth = 6;
-			var marginX = canvas.width/150;
-			var size = Math.min(Math.min((canvas.height - repairIcon.height)/painting.img.height, 1), Math.min((canvas.width/2 - 2*context.lineWidth - 2*marginX)/painting.img.width, 1));
-
-			context.drawImage(painting.img, marginX, (canvas.height - repairIcon.height)/2 - size*painting.img.height/2 + repairIcon.height, size*painting.img.width, size*painting.img.height);
-
-			context.strokeStyle = 'rgba(10, 10, 10, 1)';
-			context.beginPath();
-			context.rect(marginX, (canvas.height - repairIcon.height)/2 - size*painting.img.height/2 + repairIcon.height, size*painting.img.width, size*painting.img.height);
-			context.stroke();
-			context.closePath();
-
-			context.fillStyle = 'rgba(20, 20, 20, 1)';
-			context.fillRect(canvas.width/2, 0, canvas.width/2, canvas.height);
-
-			context.fillStyle = 'rgba(10, 10, 10, 1)';
-			context.fillRect(canvas.width/2 - 4, 0, 8, canvas.height);
 		}
 
 		context.drawImage(repairIcon, 0, 0);
@@ -326,7 +391,7 @@ setInterval(function() {
 	if (gallery) {
 		if (hovered == -1) {
 			hoverExpand = 0;
-		} else {
+		} else if (!painting) {
 			hoverExpand = Math.min(hoverExpand + 0.15, 1);
 		}
 
@@ -408,10 +473,45 @@ document.addEventListener('mousedown', function(event) {
 			imageData = null;
 			drawingData = null;
 			painting = null;
-		}
-
-		if (hovered != -1) {
+			hoverExpand = 0;
+			cacheSelect = -1;
+		} else if (!painting && hovered != -1) {
 			painting = paintings[hovered];
+			var ids = [];
+
+			for (var i in cache[painting.name]) {
+				ids.push(cache[painting.name][i].id);
+			}
+
+			socket.emit('getArt', painting.name, ids);
+
+			hoverExpand = 0;
+			hovered = -1;
+		} else if (painting) {
+			if (event.clientX >= 0 && event.clientX <= backIcon.width && event.clientY >= canvas.height - backIcon.height && event.clientY <= canvas.height) {
+				painting = null;
+				cacheSelect = -1;
+			} else {
+				var gapX = canvas.width/180;
+				var gapY = canvas.height/80;
+				var marginX = canvas.width/120;
+				var marginY = canvas.height/50;
+				var thickness = canvas.height/7;
+				var imgMarginX = canvas.width/160;
+				var imgMarginY = canvas.height/180;
+
+				var size = Math.min(Math.min((canvas.height - repairIcon.height - backIcon.height - 2*context.lineWidth - 2*marginY)/painting.img.height, 1), Math.min((canvas.width/2 - 2*context.lineWidth - 2*marginX)/painting.img.width, 1));
+				var scale = (thickness - 2*context.lineWidth - 2*imgMarginY)/painting.img.height;
+
+				var index = 0;
+				for (var i=0; i<=cache[painting.name].length; i++) {
+					if (event.clientX >= 2*marginX + size*painting.img.width + 8 + gapX && event.clientX <= 2*marginX + size*painting.img.width + 8 + gapX + canvas.width - (2*marginX + size*painting.img.width + 8 + gapX) - gapX && event.clientY >= index*(thickness + gapY) + marginY && event.clientY <= index*(thickness + gapY) + marginY + thickness) {
+						cacheSelect = index-1;
+					}
+
+					index++;
+				}
+			}
 		}
 	} else {
 		var wheelDist = getDistance(event.clientX, event.clientY, colorWheelX + colorWheel.width/2, colorWheelY + colorWheel.height/2);
@@ -461,6 +561,8 @@ document.addEventListener('mousedown', function(event) {
 			imageData = null;
 			drawingData = null;
 			painting = null;
+			hoverExpand = 0;
+			cacheSelect = -1;
 		}
 
 		if (painting) {
@@ -472,30 +574,31 @@ document.addEventListener('mousedown', function(event) {
 
 document.addEventListener('mousemove', function(event) {
 	if (gallery) {
-		var marginX = canvas.width/6;
-		var imgWidth = canvas.width/19;
-		var imgHeight = canvas.height/9;
-		var gapX = imgWidth/10;
-		var gapY = imgHeight/10;
-		var maxColumns = Math.floor((canvas.width-(2*marginX))/(imgWidth + gapX));
+		if (!painting) {
+			var marginX = canvas.width/6;
+			var imgWidth = canvas.width/19;
+			var imgHeight = canvas.height/9;
+			var gapX = imgWidth/10;
+			var gapY = imgHeight/10;
+			var maxColumns = Math.floor((canvas.width-(2*marginX))/(imgWidth + gapX));
 
-		var lastHover = hovered;
-		hovered = -1;
-		var index = 0;
-		for (var i in paintings) {
-			var temp = paintings[i].img;
+			var lastHover = hovered;
+			hovered = -1;
+			var index = 0;
+			for (var i in paintings) {
+				var temp = paintings[i].img;
 
-			if (event.clientX >= (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 && event.clientX <= (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 + imgWidth && event.clientY >= (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 && event.clientY <= (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 + imgHeight) {
-				hovered = index;
+				if (event.clientX >= (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 && event.clientX <= (imgWidth + gapX)*(index%maxColumns) + marginX - imgWidth/2 + imgWidth && event.clientY >= (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 && event.clientY <= (imgHeight + gapY)*Math.floor(index/maxColumns) + canvas.height/2 - ((imgHeight + gapY)*Math.floor(Object.keys(paintings).length/maxColumns))/2 - imgHeight/2 + imgHeight) {
+					hovered = index;
 
-				if (lastHover != hovered) {
-					hoverExpand = 0;
+					if (lastHover != hovered) {
+						hoverExpand = 0;
+					}
+					break;
 				}
-				break;
+				index++;
 			}
-			index++;
 		}
-
 	} else {
 		if (drawable && drawing && event.clientX >= (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2 && event.clientX <= (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2 + defects[painting.defect].hole_img.width && event.clientY >= (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2 && event.clientY <= (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2 + defects[painting.defect].hole_img.height) {
 			var mouseX = event.clientX - Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
@@ -545,24 +648,27 @@ document.addEventListener('keyup', function(event) {
 	} else {
 		switch(event.keyCode) {
 			case 13: // Enter
-				var sendData = '';
+				var sendData = ('00' + drawingData.width).slice(-3);
+				sendData += ('000000000' + getImageDifference(imageData.data, drawingData.data)).slice(-10);
+				sendData += ('0' + username.length).slice(-2) + username;
 				for (var i in drawingData.data) {
 					if ((i-3)%4) {
 						sendData += ('00' + drawingData.data[i]).slice(-3);
 					}
 				}
 				socket.emit('saveArt', painting.name, sendData);
-				//console.log(getImageDifference(imageData.data, drawingData.data));
-				break;
-			case 16: // Shift
-				//socket.emit('saveArt', painting.name, sendData);
-				socket.emit('getArt', painting.name);
 				break;
 		}
 	}
 });
 
-socket.on('showArt', function(art) {
+socket.on('showArt', function(paintingName, fileID, art) {
+	var width = +art.slice(0, 3);
+	var score = +art.slice(3, 13);
+	var length = +art.slice(13, 15)
+	var artist = art.slice(15, length);
+	art = art.substring(15 + length);
+
 	var receiveData = [];
 	for (var i=0; i<art.length; i+=3) {
 		receiveData.push(+(art[i] + art[i+1] + art[i+2]));
@@ -572,8 +678,17 @@ socket.on('showArt', function(art) {
 		}
 	}
 
-	console.log(receiveData);
-	drawingData.data.set(Uint8ClampedArray.from(receiveData));
+	var found = false;
+	for (var i in cache[paintingName]) {
+		if (cache[paintingName][i].id == fileID) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		cache[paintingName].push({'id': fileID, 'score': score, 'artist': ((artist.length) ? artist : 'Anonymous User'), 'data': new ImageData(Uint8ClampedArray.from(receiveData), width, (receiveData.length/4)/width)});
+	}
 });
 
 function keycode(keycode, shift) {
