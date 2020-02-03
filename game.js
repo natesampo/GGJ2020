@@ -919,7 +919,7 @@ socket.on('showArt', function(paintingName, fileID, art) {
 	var width = +art.slice(0, 3);
 	var grade = +art.slice(3, 8);
 	var length = +art.slice(8, 10);
-	var artist = art.slice(10, length);
+	var artist = art.slice(10, 10 + length);
 	art = art.substring(10 + length);
 
 	var receiveData = [];
@@ -940,7 +940,6 @@ socket.on('showArt', function(paintingName, fileID, art) {
 	}
 
 	if (!found) {
-		console.log(artist);
 		cache[paintingName].push({'id': fileID, 'grade': grade, 'artist': ((artist.length) ? artist : 'Anonymous User'), 'data': new ImageData(Uint8ClampedArray.from(receiveData), width, (receiveData.length/4)/width)});
 	}
 });
