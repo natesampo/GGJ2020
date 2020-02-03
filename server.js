@@ -27,7 +27,7 @@ server.listen(process.env.PORT || port, function() {
 	}
 });
 
-var accessToken = '2MMTqs9tilAAAAAAAAAATSgeQuYDN3pbHX8HgplCZLo1jmJ5D_is12Bpeoq-ih8';
+var accessToken = '2MMTqs9tilAAAAAAAAAATSgeQuYDN3pbHX8HgplCZLo1jmJ5D_is12Bpeoq-ih8G';
 
 io.on('connection', function(socket) {
 	console.log('New Connection');
