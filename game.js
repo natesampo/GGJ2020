@@ -21,7 +21,7 @@ var nearest = {};
 var hovered = -1;
 var hoverExpand = 0;
 var cacheSelect = -1;
-var timeLimit = 3;
+var timeLimit = 30;
 var timeLeft = 0;
 var username = '';
 var maxNameLength = 20;
@@ -47,7 +47,7 @@ function getDistance(x1, y1, x2, y2) {
 	return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 
-var defects = {'claw': {'frames': 8, 'rate': 0.65}, 'coffee': {'frames': 19, 'rate': 0.4}};
+var defects = {'claw': {'frames': 8, 'rate': 0.65}, 'coffee': {'frames': 19, 'rate': 0.5}, 'knife': {'frames': 22, 'rate': 0.65}};
 
 for (var i in defects) {
 	var img = new Image();
@@ -59,36 +59,36 @@ for (var i in defects) {
 	defects[i]['hole_img'] = img1;
 }
 
-var paintings = [{'name': 'American Gothic', 'artist': 'Grant Wood', 'defect': 'coffee', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Arnolfini Portrait', 'artist': 'Jan van Eyck', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
+var paintings = [{'name': 'American Gothic', 'artist': 'Grant Wood', 'defect': 'coffee', 'defectX': 0.65, 'defectY': 0.25},
+	{'name': 'Arnolfini Portrait', 'artist': 'Jan van Eyck', 'defect': 'claw', 'defectX': 0.58, 'defectY': 0.8},
 	{'name': 'Burning Skull Portrait', 'artist': 'Minecraft', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Composition II', 'artist': 'Piet Mondrian', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Las Meninas', 'artist': 'Diego Velázquez', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Liberty Leading the People', 'artist': 'Eugène Delacroix', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Girl with a Pearl Earring', 'artist': 'Johannes Vermeer', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Mona Lisa', 'artist': 'Leonardo da Vinci', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Napoleon Crossing the Alps', 'artist': 'Jacques-Louis David', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Napoleon\'s withdrawal from Russia', 'artist': 'Adolph Northen', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Nighthawks', 'artist': 'Edward Hopper', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Saturn Devouring his Son', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Self Portrait', 'artist': 'Vincent van Gogh', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Starry Night', 'artist': 'Vincent van Gogh', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Storm on the Sea of Galilee', 'artist': 'Rembrandt', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Sunday on the Island of La Grande Jatte', 'artist': 'Georges Seurat', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Death of Marat', 'artist': 'Jacques-Louis David', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Great Wave off Kanagawa', 'artist': 'Hokusai', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Lady with an Ermine', 'artist': 'Leonardo da Vinci', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Last Supper', 'artist': 'Leonardo da Vinci', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Night Watch', 'artist': 'Rembrandt', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Persistance of Memory', 'artist': 'Salvador Dalí', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Raft of the Medusa', 'artist': 'Théodore Géricault', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The School of Athens', 'artist': 'Raphael', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Scream', 'artist': 'Edvard Munch', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Son of Man', 'artist': 'René Magritte', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Swing', 'artist': 'Jean-Honoré Fragonard', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'The Third of May', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
+	{'name': 'Composition II', 'artist': 'Piet Mondrian', 'defect': 'coffee', 'defectX': 0.65, 'defectY': 0.65},
+	{'name': 'Las Meninas', 'artist': 'Diego Velázquez', 'defect': 'claw', 'defectX': 0.45, 'defectY': 0.65},
+	{'name': 'Liberty Leading the People', 'artist': 'Eugène Delacroix', 'defect': 'claw', 'defectX': 0.75, 'defectY': 0.42},
+	{'name': 'Girl with a Pearl Earring', 'artist': 'Johannes Vermeer', 'defect': 'coffee', 'defectX': 0.6, 'defectY': 0.5},
+	{'name': 'Mona Lisa', 'artist': 'Leonardo da Vinci', 'defect': 'claw', 'defectX': 0.47, 'defectY': 0.25},
+	{'name': 'Napoleon Crossing the Alps', 'artist': 'Jacques-Louis David', 'defect': 'claw', 'defectX': 0.65, 'defectY': 0.25},
+	{'name': 'Napoleon\'s withdrawal from Russia', 'artist': 'Adolph Northen', 'defect': 'coffee', 'defectX': 0.22, 'defectY': 0.5},
+	{'name': 'Nighthawks', 'artist': 'Edward Hopper', 'defect': 'knife', 'defectX': 0.68, 'defectY': 0.58},
+	{'name': 'Saturn Devouring his Son', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.38, 'defectY': 0.22},
+	{'name': 'Self Portrait', 'artist': 'Vincent van Gogh', 'defect': 'coffee', 'defectX': 0.43, 'defectY': 0.58},
+	{'name': 'Starry Night', 'artist': 'Vincent van Gogh', 'defect': 'claw', 'defectX': 0.6, 'defectY': 0.7},
+	{'name': 'Storm on the Sea of Galilee', 'artist': 'Rembrandt', 'defect': 'claw', 'defectX': 0.4, 'defectY': 0.4},
+	{'name': 'Sunday on the Island of La Grande Jatte', 'artist': 'Georges Seurat', 'defect': 'coffee', 'defectX': 0.5, 'defectY': 0.5},
+	{'name': 'The Death of Marat', 'artist': 'Jacques-Louis David', 'defect': 'claw', 'defectX': 0.42, 'defectY': 0.6},
+	{'name': 'The Great Wave off Kanagawa', 'artist': 'Hokusai', 'defect': 'claw', 'defectX': 0.38, 'defectY': 0.25},
+	{'name': 'The Lady with an Ermine', 'artist': 'Leonardo da Vinci', 'defect': 'claw', 'defectX': 0.7, 'defectY': 0.7},
+	{'name': 'The Last Supper', 'artist': 'Leonardo da Vinci', 'defect': 'coffee', 'defectX': 0.48, 'defectY': 0.6},
+	{'name': 'The Night Watch', 'artist': 'Rembrandt', 'defect': 'claw', 'defectX': 0.21, 'defectY': 0.59},
+	{'name': 'The Persistance of Memory', 'artist': 'Salvador Dalí', 'defect': 'coffee', 'defectX': 0.5, 'defectY': 0.4},
+	{'name': 'The Raft of the Medusa', 'artist': 'Théodore Géricault', 'defect': 'claw', 'defectX': 0.7, 'defectY': 0.25},
+	{'name': 'The School of Athens', 'artist': 'Raphael', 'defect': 'knife', 'defectX': 0.5, 'defectY': 0.52},
+	{'name': 'The Scream', 'artist': 'Edvard Munch', 'defect': 'coffee', 'defectX': 0.5, 'defectY': 0.53},
+	{'name': 'The Son of Man', 'artist': 'René Magritte', 'defect': 'coffee', 'defectX': 0.48, 'defectY': 0.3},
+	{'name': 'The Swing', 'artist': 'Jean-Honoré Fragonard', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.55},
+	{'name': 'The Third of May', 'artist': 'Francisco de Goya', 'defect': 'coffee', 'defectX': 0.6, 'defectY': 0.45},
 	{'name': 'Wanderer Above the Sea of Fog', 'artist': 'Caspar David Friedrich', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
-	{'name': 'Washington Crossing the Delaware', 'artist': 'Emanuel Leutze', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
+	{'name': 'Washington Crossing the Delaware', 'artist': 'Emanuel Leutze', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.4},
 	{'name': 'Witches\' Sabbath', 'artist': 'Francisco de Goya', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5}];
 
 for (var i in paintings) {
@@ -100,7 +100,6 @@ for (var i in paintings) {
 }
 
 function getRandomPainting() {
-	return paintings[0];
 	return paintings[Math.floor(Math.random()*paintings.length)];
 }
 
@@ -693,7 +692,7 @@ setInterval(function() {
 			finalGrade = getGrade(score, calibrationScore);
 
 			drawable = false;
-			//sendArt(painting.name, username, finalGrade, drawingData);
+			sendArt(painting.name, username, finalGrade, drawingData);
 			swingStage++;
 		}
 
