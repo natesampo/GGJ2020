@@ -21,7 +21,16 @@ var nearest = {};
 var hovered = -1;
 var hoverExpand = 0;
 var cacheSelect = -1;
+var timeLimit = 3;
+var timeLeft = 0;
 var username = '';
+var calibrationScore = 0;
+var lower = -125;
+var grades = ['A', 'B', 'C', 'D', 'F'];
+var gradeModifiers = ['-', '', '+', '+'];
+var randomGrade;
+var newRandomGrade = true;
+var finalGrade;
 var cache = {};
 var painting;
 var imageData;
@@ -102,6 +111,10 @@ function getImageDifference(image1, image2) {
 	return error;
 }
 
+function getGrade(score, calibration) {
+	return (2*calibration - score)*(100/(19*calibration/10));
+}
+
 function drawCircle(data, cx, cy, d) {
 	var minX = Math.max(Math.round(cx - d/2), 0);
 	var maxX = Math.min(Math.round(cx + d/2), defects[painting.defect].hole_img.width);
@@ -147,6 +160,38 @@ function drawCircle(data, cx, cy, d) {
 	}
 }
 
+function sendArt(paintingName, userName, grade, dataSend) {
+	var sendData = ('00' + dataSend.width).slice(-3);
+	sendData += ('0000' + grade.toFixed(1)).slice(-5);
+	sendData += ('0' + userName.length).slice(-2) + userName;
+	for (var i in dataSend.data) {
+		if ((i-3)%4) {
+			sendData += ('00' + dataSend.data[i]).slice(-3);
+		}
+	}
+	socket.emit('saveArt', paintingName, sendData);
+}
+
+function reset() {
+	angle = -180;
+	lower = -125;
+	velocity = 0;
+	swingStage = 0;
+	defectFrame = -40;
+	showDefect = false;
+	drawable = false;
+	drawing = false;
+	farthest = {};
+	nearest = {};
+	imageData = null;
+	drawingData = null;
+	painting = null;
+	hoverExpand = 0;
+	cacheSelect = -1;
+	newRandomGrade = true;
+	finalGrade = null;
+}
+
 var colorWheel = new Image();
 colorWheel.src = 'ColorWheel.png';
 
@@ -158,6 +203,12 @@ repairIcon.src = 'repair.png';
 
 var backIcon = new Image();
 backIcon.src = 'back.png';
+
+var readyIcon = new Image();
+readyIcon.src = 'ready.png';
+
+var skipIcon = new Image();
+skipIcon.src = 'skip.png';
 
 var canvas = document.getElementById('canvas');
 canvas.style.position = 'absolute';
@@ -206,6 +257,7 @@ function render() {
 			var thickness = canvas.height/7;
 			var imgMarginX = canvas.width/160;
 			var imgMarginY = canvas.height/180;
+			var textMarginX = canvas.width/50;
 			context.fillStyle = 'rgba(80, 80, 80, 1)';
 			context.lineWidth = 4;
 
@@ -217,6 +269,13 @@ function render() {
 			context.fill();
 			context.stroke();
 			context.closePath();
+
+			context.fillStyle = 'rgba(5, 5, 5, 1)';
+			context.font = (canvas.width/90).toString() + 'px Arial';
+			context.fillText('Original', 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX + scale*painting.img.width + textMarginX, marginY + context.lineWidth + imgMarginY + scale*painting.img.height/2 + canvas.width/360);
+			context.fillText('Artist: ' + painting.artist, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX + scale*painting.img.width + 3*textMarginX + context.measureText('Original').width, marginY + context.lineWidth + imgMarginY + scale*painting.img.height/2 + canvas.width/360);
+
+			context.fillStyle = 'rgba(80, 80, 80, 1)';
 
 			context.drawImage(painting.img, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX, marginY + context.lineWidth + imgMarginY, scale*painting.img.width, scale*painting.img.height);
 			if (cacheSelect >= 0) {
@@ -252,6 +311,11 @@ function render() {
 				drawing.src = tempCanvas.toDataURL();
 
 				context.drawImage(drawing, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX + scale*(painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2), (+i+1)*(thickness + gapY) + marginY + context.lineWidth + imgMarginY + scale*(painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2), scale*defects[painting.defect].hole_img.width, scale*defects[painting.defect].hole_img.height);
+			
+				context.fillStyle = 'rgba(5, 5, 5, 1)';
+				context.font = (canvas.width/90).toString() + 'px Arial';
+				context.fillText('Grade: ' + cache[painting.name][i].grade + '%', 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX + scale*painting.img.width + textMarginX, (+i+1)*(thickness + gapY) + marginY + context.lineWidth + imgMarginY + scale*painting.img.height/2 + canvas.width/360);
+				context.fillText('Artist: ' + cache[painting.name][i].artist, 2*marginX + size*painting.img.width + 8 + gapX + imgMarginX + scale*painting.img.width + 3*textMarginX + context.measureText('Grade: ' + cache[painting.name][i].grade + '%').width, (+i+1)*(thickness + gapY) + marginY + context.lineWidth + imgMarginY + scale*painting.img.height/2 + canvas.width/360);
 			}
 
 			context.drawImage(backIcon, 0, canvas.height - backIcon.height);
@@ -322,9 +386,37 @@ function render() {
 			context.globalAlpha = 1;
 		}
 
-		if (drawable) {
+		if (swingStage >= 8) {
+			context.fillStyle = 'rgba(255, 255, 255, 1)';
+			context.strokeStyle = 'rgba(5, 5, 5, 1)';
+			context.lineWidth = 5;
+			context.beginPath();
+			context.rect((canvas.width + painting.img.width)/2 + canvas.width/100, lower - canvas.height/9.69, canvas.width/19.2, canvas.height/9.69);
+			context.fill();
+			context.stroke();
+			context.closePath();
+
+			context.fillStyle = 'rgba(5, 5, 5, 1)';
+			context.fillRect((canvas.width + painting.img.width)/2 + canvas.width/100 + 0.2*canvas.width/19.2 - canvas.width/500, 0, canvas.width/240, lower - canvas.height/9.69);
+			context.fillRect((canvas.width + painting.img.width)/2 + canvas.width/100 + 0.8*canvas.width/19.2 - canvas.width/500, 0, canvas.width/240, lower - canvas.height/9.69);
+
+			if (swingStage == 9 && randomGrade) {
+				context.fillStyle = 'rgba(255, 0, 0, 1)';
+				context.font = (canvas.width/30).toString() + 'px Arial';
+				context.fillText(randomGrade, (canvas.width + painting.img.width)/2 + canvas.width/100 + 0.5*canvas.width/19.2 - context.measureText(randomGrade).width/2, lower - 0.3*canvas.height/9.69);
+			} else if (swingStage == 10 && finalGrade) {
+				context.fillStyle = 'rgba(255, 0, 0, 1)';
+				context.font = (canvas.width/30).toString() + 'px Arial';
+				var letterGrade = ((finalGrade >= 60) ? (grades[Math.floor((100-Math.min(finalGrade, 100))/10)] + gradeModifiers[Math.floor((Math.min(finalGrade, 99)-Math.floor(Math.min(finalGrade, 99)/10)*10)/3)]) : 'F');
+				context.fillText(letterGrade, (canvas.width + painting.img.width)/2 + canvas.width/100 + 0.5*canvas.width/19.2 - context.measureText(letterGrade).width/2, lower - 0.3*canvas.height/9.69);
+			}
+		}
+
+		if (drawable || swingStage >= 7) {
 			context.putImageData(drawingData, (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
-		
+		}
+
+		if (drawable) {
 			context.drawImage(colorWheel, colorWheelX, colorWheelY);
 
 			context.fillStyle = 'rgba(0, 0, 0, ' + brightness + ')';
@@ -366,6 +458,40 @@ function render() {
 			context.stroke();
 			context.closePath();
 
+			var timerX = colorWheelX + colorWheel.width/2;
+			var timerY = canvas.height/1.7;
+			var timerR = colorWheel.width/4;
+
+			context.fillStyle = 'rgba(255, 255, 255, 1)';
+			context.strokeStyle = 'rgba(0, 0, 0, 1)';
+			context.lineWidth = 4;
+			context.beginPath();
+			context.arc(timerX, timerY, timerR, 0, 2*Math.PI, false);
+			context.fill();
+			context.stroke();
+			context.closePath();
+
+			context.fillStyle = 'rgba(255, 0, 0, 1)';
+			context.beginPath();
+			context.moveTo(timerX, timerY);
+			context.arc(timerX, timerY, timerR, 1.5*Math.PI + 2*Math.PI*(1-(timeLeft/(timeLimit*ticks))), 1.5*Math.PI, true);
+			context.lineTo(timerX, timerY);
+			context.fill();
+			context.closePath();
+
+			context.fillStyle = 'rgba(255, ' + 255*(timeLeft/(timeLimit*ticks)) + ', ' + 255*(timeLeft/(timeLimit*ticks)) + ', 1)';
+			context.strokeStyle = 'rgba(0, 0, 0, 1)';
+			context.lineWidth = 3;
+			context.font = (canvas.width/60).toString() + 'px Arial';
+			context.beginPath();
+			context.rect(timerX - context.measureText('00:00').width/2 - canvas.width/300, canvas.height/1.44 - canvas.width/70, context.measureText('00:00').width + canvas.width/150, canvas.width/70 + canvas.height/150);
+			context.fill();
+			context.stroke();
+			context.closePath();
+
+			context.fillStyle = 'rgba(0, 0, 0, 1)';
+			context.fillText('00:' + ('0' + Math.round(timeLeft/ticks)).slice(-2), timerX - context.measureText('00:00').width/2, canvas.height/1.44);
+
 			var mouseX = lastX + Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
 			var mouseY = lastY + Math.round((canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
 			if (mouseX >= (canvas.width - painting.img.width)/2 && mouseX <= (canvas.width - painting.img.width)/2 + painting.img.width && mouseY >= (canvas.height - painting.img.height)/2 && mouseY <= (canvas.height - painting.img.height)/2 + painting.img.height) {
@@ -376,6 +502,9 @@ function render() {
 				context.stroke();
 				context.closePath();
 			}
+		} else if (swingStage == 3) {
+			context.drawImage(readyIcon, (canvas.width - painting.img.width)/2 - readyIcon.width - canvas.width/160, (canvas.height + painting.img.height)/2 - readyIcon.height);
+			context.drawImage(skipIcon, (canvas.width + painting.img.width)/2 + canvas.width/160, (canvas.height + painting.img.height)/2 - skipIcon.height);
 		}
 
 		context.drawImage(galleryIcon, canvas.width - galleryIcon.width, 0);
@@ -419,25 +548,57 @@ setInterval(function() {
 				if(Math.abs(angle) <= 2) {
 					velocity = 0;
 					angle = 0;
-					showDefect = true;
+					setTimeout(function () {swingStage++;}, 200);
 					swingStage++;
 				}
 				break;
-			case 2:
+			case 4:
+				showDefect = true;
 				imageData = context.getImageData(0, 0, 1, 1);
 				swingStage++;
 				break;
-			case 3:
+			case 5:
 				imageData = context.getImageData((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2, defects[painting.defect].hole_img.width, defects[painting.defect].hole_img.height);
 				swingStage++;
+				break;
+			case 8:
+				if (lower < canvas.height/8) {
+					lower += 2.5;
+				} else {
+					setTimeout(function() {swingStage++}, 3500);
+					swingStage++;
+				}
+				break;
+			case 9:
+				if (!randomGrade || newRandomGrade) {
+					randomGrade = grades[Math.floor(Math.random()*grades.length)] + gradeModifiers[Math.floor(Math.random()*(gradeModifiers.length-1))];
+					setTimeout(function() {newRandomGrade = true;}, 150);
+					newRandomGrade = false;
+				}
 				break;
 		}
 
 		if (!drawingData && defectFrame > 0 && 1 - (-defectFrame + 100)/50 >= 1) {
 			drawable = true;
 			drawingData = context.getImageData((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2, defects[painting.defect].hole_img.width, defects[painting.defect].hole_img.height);
+			calibrationScore = getImageDifference(imageData.data, drawingData.data);
 			showDefect = false;
 			defectFrame = -40;
+			timeLeft = timeLimit*ticks;
+		}
+
+		if (drawable && timeLeft > 0) {
+			timeLeft--;
+			if (timeLeft == 0) {
+				swingStage++;
+			}
+		} else if (swingStage == 7) {
+			var score = getImageDifference(imageData.data, drawingData.data);
+			finalGrade = getGrade(score, calibrationScore);
+
+			drawable = false;
+			//sendArt(painting.name, username, finalGrade, drawingData);
+			swingStage++;
 		}
 
 		angle += velocity;
@@ -460,21 +621,7 @@ document.addEventListener('mousedown', function(event) {
 	if (gallery) {
 		if (event.clientX >= 0 && event.clientX <= repairIcon.width && event.clientY >= 0 && event.clientY <= repairIcon.height) {
 			gallery = false;
-
-			angle = -180;
-			velocity = 0;
-			swingStage = 0;
-			defectFrame = -40;
-			showDefect = false;
-			drawable = false;
-			drawing = false;
-			farthest = {};
-			nearest = {};
-			imageData = null;
-			drawingData = null;
-			painting = null;
-			hoverExpand = 0;
-			cacheSelect = -1;
+			reset();
 		} else if (!painting && hovered != -1) {
 			painting = paintings[hovered];
 			var ids = [];
@@ -548,21 +695,15 @@ document.addEventListener('mousedown', function(event) {
 
 		if (event.clientX >= canvas.width - galleryIcon.width && event.clientX <= canvas.width && event.clientY >= 0 && event.clientY <= galleryIcon.height) {
 			gallery = true;
+			reset();
+		}
 
-			angle = -180;
-			velocity = 0;
-			swingStage = 0;
-			defectFrame = -40;
-			showDefect = false;
-			drawable = false;
-			drawing = false;
-			farthest = {};
-			nearest = {};
-			imageData = null;
-			drawingData = null;
-			painting = null;
-			hoverExpand = 0;
-			cacheSelect = -1;
+		if (swingStage == 3) {
+			if (event.clientX >= (canvas.width - painting.img.width)/2 - readyIcon.width - canvas.width/160 && event.clientX <= (canvas.width - painting.img.width)/2 - canvas.width/160 && event.clientY >= (canvas.height + painting.img.height)/2 - readyIcon.height && event.clientY <= (canvas.height + painting.img.height)/2) {
+				swingStage++;
+			} else if (event.clientX >= (canvas.width + painting.img.width)/2 + canvas.width/160 && event.clientX <= (canvas.width + painting.img.width)/2 + canvas.width/160 + skipIcon.width && event.clientY >= (canvas.height + painting.img.height)/2 - skipIcon.height && event.clientY <= (canvas.height + painting.img.height)/2) {
+				reset();
+			}
 		}
 
 		if (painting) {
@@ -643,31 +784,15 @@ document.addEventListener('keydown', function(event) {
 });
 
 document.addEventListener('keyup', function(event) {
-	if (gallery) {
 
-	} else {
-		switch(event.keyCode) {
-			case 13: // Enter
-				var sendData = ('00' + drawingData.width).slice(-3);
-				sendData += ('000000000' + getImageDifference(imageData.data, drawingData.data)).slice(-10);
-				sendData += ('0' + username.length).slice(-2) + username;
-				for (var i in drawingData.data) {
-					if ((i-3)%4) {
-						sendData += ('00' + drawingData.data[i]).slice(-3);
-					}
-				}
-				socket.emit('saveArt', painting.name, sendData);
-				break;
-		}
-	}
 });
 
 socket.on('showArt', function(paintingName, fileID, art) {
 	var width = +art.slice(0, 3);
-	var score = +art.slice(3, 13);
-	var length = +art.slice(13, 15)
-	var artist = art.slice(15, length);
-	art = art.substring(15 + length);
+	var grade = +art.slice(3, 8);
+	var length = +art.slice(8, 10);
+	var artist = art.slice(10, length);
+	art = art.substring(10 + length);
 
 	var receiveData = [];
 	for (var i=0; i<art.length; i+=3) {
@@ -687,7 +812,7 @@ socket.on('showArt', function(paintingName, fileID, art) {
 	}
 
 	if (!found) {
-		cache[paintingName].push({'id': fileID, 'score': score, 'artist': ((artist.length) ? artist : 'Anonymous User'), 'data': new ImageData(Uint8ClampedArray.from(receiveData), width, (receiveData.length/4)/width)});
+		cache[paintingName].push({'id': fileID, 'grade': grade, 'artist': ((artist.length) ? artist : 'Anonymous User'), 'data': new ImageData(Uint8ClampedArray.from(receiveData), width, (receiveData.length/4)/width)});
 	}
 });
 
