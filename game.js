@@ -24,6 +24,7 @@ var cacheSelect = -1;
 var timeLimit = 3;
 var timeLeft = 0;
 var username = '';
+var maxNameLength = 20;
 var calibrationScore = 0;
 var lower = -125;
 var grades = ['A', 'B', 'C', 'D', 'F'];
@@ -32,6 +33,10 @@ var randomGrade;
 var newRandomGrade = true;
 var finalGrade;
 var cache = {};
+var menu = true;
+var textFade = -0.2;
+var blinking = 0;
+var shift = false;
 var painting;
 var imageData;
 var drawingData;
@@ -42,7 +47,7 @@ function getDistance(x1, y1, x2, y2) {
 	return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 
-var defects = {'claw': {'frames': 8}};
+var defects = {'claw': {'frames': 8, 'rate': 0.65}, 'coffee': {'frames': 19, 'rate': 0.4}};
 
 for (var i in defects) {
 	var img = new Image();
@@ -54,7 +59,7 @@ for (var i in defects) {
 	defects[i]['hole_img'] = img1;
 }
 
-var paintings = [{'name': 'American Gothic', 'artist': 'Grant Wood', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
+var paintings = [{'name': 'American Gothic', 'artist': 'Grant Wood', 'defect': 'coffee', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Arnolfini Portrait', 'artist': 'Jan van Eyck', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Burning Skull Portrait', 'artist': 'Minecraft', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
 	{'name': 'Composition II', 'artist': 'Piet Mondrian', 'defect': 'claw', 'defectX': 0.5, 'defectY': 0.5},
@@ -95,6 +100,7 @@ for (var i in paintings) {
 }
 
 function getRandomPainting() {
+	return paintings[0];
 	return paintings[Math.floor(Math.random()*paintings.length)];
 }
 
@@ -210,6 +216,9 @@ readyIcon.src = 'ready.png';
 var skipIcon = new Image();
 skipIcon.src = 'skip.png';
 
+var titleIcon = new Image();
+titleIcon.src = 'title.png';
+
 var canvas = document.getElementById('canvas');
 canvas.style.position = 'absolute';
 canvas.style.top = 0;
@@ -230,7 +239,51 @@ function render() {
 	context.fillStyle = 'rgba(40, 40, 40, 1)';
 	context.fillRect(0, 0, canvas.width, canvas.height);
 
-	if (gallery) {
+	if (menu) {
+		context.globalAlpha = textFade;
+		context.drawImage(titleIcon, (canvas.width - titleIcon.width)/2, (canvas.height - titleIcon.height)/2 - canvas.height/6);
+		context.drawImage(repairIcon, 0, 0);
+		context.drawImage(galleryIcon, canvas.width - galleryIcon.width, 0);
+
+		var labelX = 0.075;
+		var labelMargin = canvas.width/350;
+		var width = canvas.width/4;
+		var height = canvas.height/15;
+		var boxX = canvas.width/2 - width/2;
+		var boxY = canvas.height/1.65;
+		var r = 10;
+		var blinkerHeight = height/2;
+
+		context.fillStyle = 'rgba(255, 255, 255, 1)';
+		context.font = (canvas.width/90).toString() + 'px Arial';
+		context.fillText('Name', boxX + width*labelX - r, boxY + canvas.width/360);
+
+		context.strokeStyle = 'rgba(255, 255, 255, 1)';
+		context.lineWidth = 1;
+		context.beginPath();
+		context.moveTo(boxX + r, boxY);
+		context.lineTo(boxX + width*labelX - r - labelMargin, boxY);
+		context.moveTo(boxX + width*labelX - r + context.measureText('Name').width + labelMargin, boxY);
+		context.lineTo(boxX + width - r, boxY);
+		context.quadraticCurveTo(boxX + width, boxY, boxX + width, boxY + r);
+		context.lineTo(boxX + width, boxY + height - r);
+		context.quadraticCurveTo(boxX + width, boxY + height, boxX + width - r, boxY + height);
+		context.lineTo(boxX + r, boxY + height);
+		context.quadraticCurveTo(boxX, boxY + height, boxX, boxY + height - r);
+		context.lineTo(boxX, boxY + r);
+		context.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+		context.stroke();
+		context.closePath();
+
+		context.font = (canvas.width/60).toString() + 'px Arial';
+		context.fillText(username, boxX + r + 5, boxY + (height - blinkerHeight)/0.74);
+
+		if (blinking < ticks/2) {
+			context.fillRect(boxX + r + 6 + context.measureText(username).width, boxY + (height - blinkerHeight)/2, 2, blinkerHeight);
+		}
+
+		context.globalAlpha = 1;
+	} else if (gallery) {
 		if (painting) {
 			context.lineWidth = 6;
 			var marginX = canvas.width/120;
@@ -386,7 +439,7 @@ function render() {
 			context.globalAlpha = 1;
 		}
 
-		if (swingStage >= 8) {
+		if (swingStage >= 8 && swingStage < 13) {
 			context.fillStyle = 'rgba(255, 255, 255, 1)';
 			context.strokeStyle = 'rgba(5, 5, 5, 1)';
 			context.lineWidth = 5;
@@ -409,11 +462,35 @@ function render() {
 				context.font = (canvas.width/30).toString() + 'px Arial';
 				var letterGrade = ((finalGrade >= 60) ? (grades[Math.floor((100-Math.min(finalGrade, 100))/10)] + gradeModifiers[Math.floor((Math.min(finalGrade, 99)-Math.floor(Math.min(finalGrade, 99)/10)*10)/3)]) : 'F');
 				context.fillText(letterGrade, (canvas.width + painting.img.width)/2 + canvas.width/100 + 0.5*canvas.width/19.2 - context.measureText(letterGrade).width/2, lower - 0.3*canvas.height/9.69);
+			} else if ((swingStage == 11 || swingStage == 12) && finalGrade) {
+				context.fillStyle = 'rgba(255, 0, 0, 1)';
+				context.font = (canvas.width/45).toString() + 'px Arial';
+				context.fillText(finalGrade.toFixed(0) + '%', (canvas.width + painting.img.width)/2 + canvas.width/100 + 0.5*canvas.width/19.2 - context.measureText(finalGrade.toFixed(0) + '%').width/2, lower - 0.33*canvas.height/9.69);
 			}
 		}
 
-		if (drawable || swingStage >= 7) {
-			context.putImageData(drawingData, (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+		if (drawable || (swingStage >= 7 && swingStage < 13)) {
+			if (angle) {
+				var tempCanvas = document.createElement('canvas');
+				var tempContext = tempCanvas.getContext('2d');
+				tempCanvas.width = drawingData.width;
+				tempCanvas.height = drawingData.height;
+				tempContext.putImageData(drawingData, 0, 0);
+
+				var drawing = new Image();
+				drawing.src = tempCanvas.toDataURL();
+
+				context.save();
+
+				context.translate(canvas.width/2, canvas.height/40);
+				context.rotate(angle*Math.PI / 180);
+				context.translate(-canvas.width/2, -canvas.height/40);
+
+				context.drawImage(drawing, (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+			} else {
+				context.putImageData(drawingData, (canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2, (canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
+			}
+			context.restore();
 		}
 
 		if (drawable) {
@@ -517,7 +594,11 @@ setInterval(function() {
 	context = canvas.getContext('2d');
 	context.imageSmoothingEnabled = false;
 
-	if (gallery) {
+	if (menu) {
+		textFade = Math.max(Math.min(textFade+0.005, 1), 0);
+		blinking = (blinking+0.6)%ticks;
+		render();
+	} else if (gallery) {
 		if (hovered == -1) {
 			hoverExpand = 0;
 		} else if (!painting) {
@@ -531,7 +612,7 @@ setInterval(function() {
 		}
 
 		if (showDefect) {
-			defectFrame += 10.65;
+			defectFrame += defects[painting.defect].rate;
 		}
 
 		render();
@@ -565,7 +646,9 @@ setInterval(function() {
 				if (lower < canvas.height/8) {
 					lower += 2.5;
 				} else {
-					setTimeout(function() {swingStage++}, 3500);
+					setTimeout(function() {swingStage++}, 3000);
+					setTimeout(function() {swingStage++}, 5200);
+					setTimeout(function() {swingStage++}, 6900);
 					swingStage++;
 				}
 				break;
@@ -574,6 +657,19 @@ setInterval(function() {
 					randomGrade = grades[Math.floor(Math.random()*grades.length)] + gradeModifiers[Math.floor(Math.random()*(gradeModifiers.length-1))];
 					setTimeout(function() {newRandomGrade = true;}, 150);
 					newRandomGrade = false;
+				}
+				break;
+			case 12:
+				lower -= 2.5;
+				angle = Math.min(angle+2.3, 180);
+				if (angle >= 180) {
+					reset();
+				}
+				break;
+			case 13:
+				angle = Math.min(angle+2.3, 180);
+				if (angle >= 180) {
+					reset();
 				}
 				break;
 		}
@@ -618,7 +714,17 @@ document.addEventListener('mousedown', function(event) {
 	changingBrightness = false;
 	changingBrushSize = false;
 
-	if (gallery) {
+	if (menu) {
+		if (event.clientX >= canvas.width - galleryIcon.width && event.clientX <= canvas.width && event.clientY >= 0 && event.clientY <= galleryIcon.height) {
+			gallery = true;
+			menu = false;
+			reset();
+		} else if (event.clientX >= 0 && event.clientX <= repairIcon.width && event.clientY >= 0 && event.clientY <= repairIcon.height) {
+			gallery = false;
+			menu = false;
+			reset();
+		}
+	} else if (gallery) {
 		if (event.clientX >= 0 && event.clientX <= repairIcon.width && event.clientY >= 0 && event.clientY <= repairIcon.height) {
 			gallery = false;
 			reset();
@@ -686,7 +792,7 @@ document.addEventListener('mousedown', function(event) {
 			brushSize = Math.round(Math.min(Math.max((maxBrushSize-1)*((event.clientX - canvas.width/15)/(canvas.width/10)) + 1, 1), maxBrushSize));
 		}
 
-		if (drawing) {
+		if (drawing && painting) {
 			var cx = event.clientX - Math.round((canvas.width - painting.img.width)/2 + painting.img.width*painting.defectX - defects[painting.defect].hole_img.width/2);
 			var cy = event.clientY - Math.round((canvas.height - painting.img.height)/2 + painting.img.height*painting.defectY - defects[painting.defect].hole_img.height/2);
 
@@ -702,7 +808,7 @@ document.addEventListener('mousedown', function(event) {
 			if (event.clientX >= (canvas.width - painting.img.width)/2 - readyIcon.width - canvas.width/160 && event.clientX <= (canvas.width - painting.img.width)/2 - canvas.width/160 && event.clientY >= (canvas.height + painting.img.height)/2 - readyIcon.height && event.clientY <= (canvas.height + painting.img.height)/2) {
 				swingStage++;
 			} else if (event.clientX >= (canvas.width + painting.img.width)/2 + canvas.width/160 && event.clientX <= (canvas.width + painting.img.width)/2 + canvas.width/160 + skipIcon.width && event.clientY >= (canvas.height + painting.img.height)/2 - skipIcon.height && event.clientY <= (canvas.height + painting.img.height)/2) {
-				reset();
+				swingStage = 13;
 			}
 		}
 
@@ -714,7 +820,9 @@ document.addEventListener('mousedown', function(event) {
 });
 
 document.addEventListener('mousemove', function(event) {
-	if (gallery) {
+	if (menu) {
+
+	} else if (gallery) {
 		if (!painting) {
 			var marginX = canvas.width/6;
 			var imgWidth = canvas.width/19;
@@ -780,11 +888,32 @@ document.addEventListener('mousemove', function(event) {
 });
 
 document.addEventListener('keydown', function(event) {
+	if (menu) {
+		if (username.length < maxNameLength) {
+			username = username + keycode(event.keyCode, shift);
+		}
 
+		switch (event.keyCode) {
+			case 8: // Backspace
+				if (username.length > 0) {
+					username = username.slice(0, -1);
+				}
+				break;
+			case 16: // Shift
+				shift = true;
+				break;
+		}
+	}
 });
 
 document.addEventListener('keyup', function(event) {
-
+	if (menu) {
+		switch (event.keyCode) {
+			case 16: // Shift
+				shift = false;
+				break;
+		}
+	}
 });
 
 socket.on('showArt', function(paintingName, fileID, art) {
