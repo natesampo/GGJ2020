@@ -29,7 +29,7 @@ server.listen(process.env.PORT || port, function() {
 	}
 });
 
-var accessToken = '2MMTqs9tilAAAAAAAAAATI2Z_k9jW7qtzjRVhUuTOSy_E-9XYdmIv223Icj33TQ';
+var accessToken = '2MMTqs9tilAAAAAAAAAATI2Z_k9jW7qtzjRVhUuTOSy_E-9XYdmIv223Icj33TQq';
 
 io.on('connection', function(socket) {
 	console.log('New Connection');
