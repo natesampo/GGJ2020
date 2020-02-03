@@ -940,6 +940,7 @@ socket.on('showArt', function(paintingName, fileID, art) {
 	}
 
 	if (!found) {
+		console.log(artist);
 		cache[paintingName].push({'id': fileID, 'grade': grade, 'artist': ((artist.length) ? artist : 'Anonymous User'), 'data': new ImageData(Uint8ClampedArray.from(receiveData), width, (receiveData.length/4)/width)});
 	}
 });
