@@ -1,0 +1,25 @@
+{
+  "name": "ggj2020",
+  "version": "1.0.0",
+  "description": "renaissance-repair",
+  "main": "game.js",
+  "dependencies": {
+    "express": "^4.16.3",
+    "jszip": "^3.2.2",
+    "socket.io": "^2.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/natesampo/GGJ2020.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": "10.x"
+  }
+}
