@@ -40,6 +40,7 @@ var shift = false;
 var painting;
 var imageData;
 var drawingData;
+// ehy
 
 var socket = io();
 
