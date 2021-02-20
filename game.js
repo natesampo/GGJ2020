@@ -344,6 +344,7 @@ function render() {
 			}
 
 			for (var i in cache[painting.name]) {
+				context.fillStyle = 'rgba(80, 80, 80, 1)';
 				context.strokeStyle = ((cacheSelect==i) ? 'rgba(240, 240, 240, 1)' : 'rgba(10, 10, 10, 1)');
 				context.beginPath();
 				context.rect(2*marginX + size*painting.img.width + 8 + gapX, (+i+1)*(thickness + gapY) + marginY, canvas.width - (2*marginX + size*painting.img.width + 8 + gapX) - gapX, thickness);
